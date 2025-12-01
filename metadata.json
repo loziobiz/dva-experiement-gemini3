@@ -1,0 +1,7 @@
+{
+  "name": "DVA - Drone Vision Archeology",
+  "description": "Piattaforma per il caricamento e l'analisi AI di immagini da drone per la scoperta di siti archeologici.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
