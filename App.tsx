@@ -281,6 +281,13 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // Auto-save images to localStorage whenever they change
+  useEffect(() => {
+    if (images.length > 0) {
+      localStorage.setItem('dva_images', JSON.stringify(images));
+    }
+  }, [images]);
+
   // Initialize Autocomplete
   useEffect(() => {
     if (view === 'editor' && autoCompleteRef.current && window.google) {
@@ -405,14 +412,6 @@ const App: React.FC = () => {
     // Clear local storage for pilot
     localStorage.removeItem('dva_images');
     setView('success');
-  };
-
-  const handleSaveMetadata = () => {
-    // Save current state to local storage
-    localStorage.setItem('dva_images', JSON.stringify(images));
-    // Provide feedback (optional, simple alert for now)
-    alert("Metadati salvati con successo!");
-    // Do NOT deselect images
   };
 
   const handleReset = () => {
@@ -750,17 +749,6 @@ const App: React.FC = () => {
                              <p className="text-xs">Avvia l'analisi per identificare<br/>potenziali siti di scavo.</p>
                          </div>
                      )}
-                </div>
-
-                <div className="mt-auto pt-4">
-                     <button 
-                        onClick={handleSaveMetadata}
-                        disabled={selectedImageIds.length === 0}
-                        className="w-full bg-slate-700 text-white font-bold py-3 rounded-lg hover:bg-slate-600 transition-colors flex items-center justify-center gap-2 border border-slate-600"
-                     >
-                        <span className="material-symbols-outlined">save</span>
-                        Salva Metadati
-                     </button>
                 </div>
               </div>
 
