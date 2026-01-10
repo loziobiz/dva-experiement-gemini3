@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DroneImage, Coordinates, AIAnalysisResult } from './types';
 import { analyzeImage, fileToBase64 } from './services/geminiService';
 import { extractExifMetadata } from './services/exifService';
+import { createSubmission } from './services/submissionService';
+import ArchaeologistDashboard from './components/archaeologist/ArchaeologistDashboard';
 
 declare var google: any;
 
@@ -13,7 +15,12 @@ declare global {
 
 // --- Sub-components defined internally for simplicity of the single XML block structure ---
 
-const Header = () => (
+interface HeaderProps {
+  currentUserView: 'pilot' | 'archaeologist';
+  onViewChange: (view: 'pilot' | 'archaeologist') => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ currentUserView, onViewChange }) => (
   <header className="border-b border-secondary bg-background/80 backdrop-blur-md sticky top-0 z-50">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       <div className="flex items-center gap-3">
@@ -21,6 +28,34 @@ const Header = () => (
         <h1 className="text-xl font-bold tracking-tight text-white">DVA <span className="text-slate-400 font-normal text-sm ml-1 hidden sm:inline">| Drone Vision Archeology</span></h1>
       </div>
       <div className="flex items-center gap-4">
+        {/* View Toggle */}
+        <div className="flex items-center gap-1 bg-surface border border-secondary rounded-lg p-1">
+          <button
+            onClick={() => onViewChange('pilot')}
+            className={`
+              flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all
+              ${currentUserView === 'pilot' 
+                ? 'bg-primary text-slate-900' 
+                : 'text-slate-400 hover:text-white'}
+            `}
+          >
+            <span className="material-symbols-outlined text-lg">flight</span>
+            <span className="hidden sm:inline">Pilota</span>
+          </button>
+          <button
+            onClick={() => onViewChange('archaeologist')}
+            className={`
+              flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all
+              ${currentUserView === 'archaeologist' 
+                ? 'bg-primary text-slate-900' 
+                : 'text-slate-400 hover:text-white'}
+            `}
+          >
+            <span className="material-symbols-outlined text-lg">search</span>
+            <span className="hidden sm:inline">Archeologo</span>
+          </button>
+        </div>
+
         <button className="text-slate-400 hover:text-white transition-colors">
           <span className="material-symbols-outlined">help</span>
         </button>
@@ -220,6 +255,7 @@ const MapComponent: React.FC<MapProps> = ({ coordinates, onCoordinatesChange, se
 // --- MAIN APP COMPONENT ---
 
 const App: React.FC = () => {
+  const [currentUserView, setCurrentUserView] = useState<'pilot' | 'archaeologist'>('pilot');
   const [view, setView] = useState<'upload' | 'editor' | 'success'>('upload');
   const [images, setImages] = useState<DroneImage[]>([]);
   const [selectedImageIds, setSelectedImageIds] = useState<string[]>([]);
@@ -362,8 +398,12 @@ const App: React.FC = () => {
     setIsAnalyzing(false);
   };
 
-  const handleSubmit = () => {
-    // In a real app, this would upload data to the backend
+  const handleSubmit = async () => {
+    // Create a submission for the archaeologist to review
+    // This converts blob URLs to base64 for persistence
+    await createSubmission(images);
+    // Clear local storage for pilot
+    localStorage.removeItem('dva_images');
     setView('success');
   };
 
@@ -413,10 +453,16 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background text-slate-200 font-sans selection:bg-primary selection:text-white">
-      <Header />
+      <Header currentUserView={currentUserView} onViewChange={setCurrentUserView} />
 
-      {/* Main container without fixed height to allow scrolling */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-auto">
+      {/* Archaeologist View */}
+      {currentUserView === 'archaeologist' && (
+        <ArchaeologistDashboard />
+      )}
+
+      {/* Pilot View */}
+      {currentUserView === 'pilot' && (
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-auto">
         
         {view === 'upload' && (
           <div className="flex flex-col items-center justify-center animate-fade-in gap-10 py-8 min-h-[calc(100vh-128px)]">
@@ -763,6 +809,7 @@ const App: React.FC = () => {
           </div>
         )}
       </main>
+      )}
     </div>
   );
 };
