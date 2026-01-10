@@ -40,85 +40,90 @@ interface MapProps {
 
 const MapComponent: React.FC<MapProps> = ({ coordinates, onCoordinatesChange, searchAddress }) => {
   const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any | null>(null);
+  const markerRef = useRef<any | null>(null);
   const [map, setMap] = useState<any | null>(null);
   const [marker, setMarker] = useState<any | null>(null);
 
+  // Map styles (extracted for readability)
+  const mapStyles = [
+    { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+    {
+      featureType: "administrative.locality",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#d59563" }],
+    },
+    {
+      featureType: "poi",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#d59563" }],
+    },
+    {
+      featureType: "poi.park",
+      elementType: "geometry",
+      stylers: [{ color: "#263c3f" }],
+    },
+    {
+      featureType: "poi.park",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#6b9a76" }],
+    },
+    {
+      featureType: "road",
+      elementType: "geometry",
+      stylers: [{ color: "#38414e" }],
+    },
+    {
+      featureType: "road",
+      elementType: "geometry.stroke",
+      stylers: [{ color: "#212a37" }],
+    },
+    {
+      featureType: "road",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#9ca5b3" }],
+    },
+    {
+      featureType: "road.highway",
+      elementType: "geometry",
+      stylers: [{ color: "#746855" }],
+    },
+    {
+      featureType: "road.highway",
+      elementType: "geometry.stroke",
+      stylers: [{ color: "#1f2835" }],
+    },
+    {
+      featureType: "road.highway",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#f3d19c" }],
+    },
+    {
+      featureType: "water",
+      elementType: "geometry",
+      stylers: [{ color: "#17263c" }],
+    },
+    {
+      featureType: "water",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#515c6d" }],
+    },
+    {
+      featureType: "water",
+      elementType: "labels.text.stroke",
+      stylers: [{ color: "#17263c" }],
+    },
+  ];
+
   // Initialize Map
   useEffect(() => {
-    if (mapRef.current && !map) {
+    if (mapRef.current && !mapInstanceRef.current) {
       const initialMap = new google.maps.Map(mapRef.current, {
         center: coordinates,
         zoom: 15,
-        styles: [
-            { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
-            { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
-            { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
-            {
-              featureType: "administrative.locality",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#d59563" }],
-            },
-            {
-              featureType: "poi",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#d59563" }],
-            },
-            {
-              featureType: "poi.park",
-              elementType: "geometry",
-              stylers: [{ color: "#263c3f" }],
-            },
-            {
-              featureType: "poi.park",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#6b9a76" }],
-            },
-            {
-              featureType: "road",
-              elementType: "geometry",
-              stylers: [{ color: "#38414e" }],
-            },
-            {
-              featureType: "road",
-              elementType: "geometry.stroke",
-              stylers: [{ color: "#212a37" }],
-            },
-            {
-              featureType: "road",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#9ca5b3" }],
-            },
-            {
-              featureType: "road.highway",
-              elementType: "geometry",
-              stylers: [{ color: "#746855" }],
-            },
-            {
-              featureType: "road.highway",
-              elementType: "geometry.stroke",
-              stylers: [{ color: "#1f2835" }],
-            },
-            {
-              featureType: "road.highway",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#f3d19c" }],
-            },
-            {
-              featureType: "water",
-              elementType: "geometry",
-              stylers: [{ color: "#17263c" }],
-            },
-            {
-              featureType: "water",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#515c6d" }],
-            },
-            {
-              featureType: "water",
-              elementType: "labels.text.stroke",
-              stylers: [{ color: "#17263c" }],
-            },
-          ],
+        styles: mapStyles,
         mapTypeControl: false,
         streetViewControl: false,
       });
@@ -130,40 +135,83 @@ const MapComponent: React.FC<MapProps> = ({ coordinates, onCoordinatesChange, se
         animation: google.maps.Animation.DROP,
       });
 
-      initialMarker.addListener('dragend', () => {
-        const pos = initialMarker.getPosition();
+      // Store refs for access in cleanup
+      mapInstanceRef.current = initialMap;
+      markerRef.current = initialMarker;
+
+      setMap(initialMap);
+      setMarker(initialMarker);
+
+      // Cleanup function
+      return () => {
+        if (markerRef.current) {
+          google.maps.event.clearInstanceListeners(markerRef.current);
+          markerRef.current.setMap(null);
+        }
+        if (mapInstanceRef.current) {
+          google.maps.event.clearInstanceListeners(mapInstanceRef.current);
+        }
+        mapInstanceRef.current = null;
+        markerRef.current = null;
+      };
+    }
+  }, []); // Empty deps - run only once
+
+  // Update marker and map when coordinates change externally
+  useEffect(() => {
+    if (mapInstanceRef.current && markerRef.current) {
+      const currentPos = markerRef.current.getPosition();
+      const diffLat = Math.abs((currentPos?.lat() || 0) - coordinates.lat);
+      const diffLng = Math.abs((currentPos?.lng() || 0) - coordinates.lng);
+
+      // Only update if difference is significant to prevent jitter/loops
+      if (diffLat > 0.0001 || diffLng > 0.0001) {
+        markerRef.current.setPosition(coordinates);
+        mapInstanceRef.current.panTo(coordinates);
+      }
+    }
+  }, [coordinates]);
+
+  // Setup listeners when map and coordinates are available
+  useEffect(() => {
+    if (mapInstanceRef.current && markerRef.current) {
+      const currentMap = mapInstanceRef.current;
+      const currentMarker = markerRef.current;
+
+      // Remove any existing listeners first to avoid duplicates
+      google.maps.event.clearListeners(currentMarker, 'dragend');
+      google.maps.event.clearListeners(currentMap, 'click');
+
+      // Marker drag end listener
+      currentMarker.addListener('dragend', () => {
+        const pos = currentMarker.getPosition();
         if (pos) {
           onCoordinatesChange({ lat: pos.lat(), lng: pos.lng() });
         }
       });
 
-      // Map click to move marker
-      initialMap.addListener('click', (e: any) => {
-         if(e.latLng) {
-             initialMarker.setPosition(e.latLng);
-             onCoordinatesChange({ lat: e.latLng.lat(), lng: e.latLng.lng() });
-         }
+      // Map click listener - moves marker and updates coordinates
+      currentMap.addListener('click', (e: any) => {
+        if (e.latLng) {
+          currentMarker.setPosition(e.latLng);
+          currentMarker.setAnimation(google.maps.Animation.DROP);
+          onCoordinatesChange({ lat: e.latLng.lat(), lng: e.latLng.lng() });
+        }
       });
 
-      setMap(initialMap);
-      setMarker(initialMarker);
+      // Cleanup listeners on unmount or when dependencies change
+      return () => {
+        google.maps.event.clearListeners(currentMarker, 'dragend');
+        google.maps.event.clearListeners(currentMap, 'click');
+      };
     }
-  }, [map]);
+  }, [onCoordinatesChange]); // Re-attach when onCoordinatesChange changes
 
-  // Update map when coordinates change externally (e.g. from bulk edit or search)
+  // Sync local state with refs
   useEffect(() => {
-    if (map && marker) {
-      const currentPos = marker.getPosition();
-      const diffLat = Math.abs((currentPos?.lat() || 0) - coordinates.lat);
-      const diffLng = Math.abs((currentPos?.lng() || 0) - coordinates.lng);
-      
-      // Only update if difference is significant to prevent jitter/loops
-      if (diffLat > 0.0001 || diffLng > 0.0001) {
-        marker.setPosition(coordinates);
-        map.panTo(coordinates);
-      }
-    }
-  }, [coordinates, map, marker]);
+    setMap(mapInstanceRef.current);
+    setMarker(markerRef.current);
+  }, []);
 
   return <div ref={mapRef} className="w-full h-full rounded-lg" />;
 };
