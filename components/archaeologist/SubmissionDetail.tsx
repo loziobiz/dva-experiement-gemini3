@@ -139,10 +139,7 @@ const SubmissionDetail: React.FC<SubmissionDetailProps> = ({ submission, onBack,
   // Run AI analysis on an image
   const handleRunAnalysis = async (imageId: string): Promise<void> => {
     const image = localSubmission.images.find(img => img.id === imageId);
-    if (!image || !image.previewUrl) {
-      console.error('No image or previewUrl found');
-      return;
-    }
+    if (!image || !image.previewUrl) return;
 
     try {
       let base64: string;
@@ -151,12 +148,9 @@ const SubmissionDetail: React.FC<SubmissionDetailProps> = ({ submission, onBack,
       if (image.previewUrl.startsWith('data:')) {
         // Parse data URL: data:image/png;base64,XXXXXX
         const commaIndex = image.previewUrl.indexOf(',');
-        if (commaIndex === -1) {
-          console.error('Invalid data URL format - no comma found');
-          return;
-        }
+        if (commaIndex === -1) return;
         
-        // Extract mime type from the header part (e.g., "data:image/png;base64")
+        // Extract mime type from the header
         const header = image.previewUrl.substring(0, commaIndex);
         const mimeMatch = header.match(/data:([^;]+)/);
         if (mimeMatch) {
@@ -165,11 +159,8 @@ const SubmissionDetail: React.FC<SubmissionDetailProps> = ({ submission, onBack,
         
         // Extract base64 data after the comma
         base64 = image.previewUrl.substring(commaIndex + 1);
-        
-        console.log('Extracted from data URL:', { mimeType, base64Length: base64.length });
       } else {
         // Fetch blob URL and convert to base64
-        console.log('Fetching blob URL:', image.previewUrl);
         const response = await fetch(image.previewUrl);
         const blob = await response.blob();
         mimeType = blob.type || 'image/jpeg';
@@ -184,14 +175,10 @@ const SubmissionDetail: React.FC<SubmissionDetailProps> = ({ submission, onBack,
           reader.onerror = reject;
           reader.readAsDataURL(blob);
         });
-        
-        console.log('Extracted from blob:', { mimeType, base64Length: base64.length });
       }
 
       // Run AI analysis
-      console.log('Calling analyzeImage with mimeType:', mimeType);
       const aiResult = await analyzeImage(base64, mimeType);
-      console.log('AI Result:', aiResult);
       
       // Save the result to the submission
       updateImageAIAnalysis(localSubmission.id, imageId, aiResult);

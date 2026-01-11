@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { 
   DroneImage, 
   ImageReviewStatus, 
@@ -8,6 +8,55 @@ import {
   DISCARD_REASON_LABELS 
 } from '../../types';
 import { getStatusIcon } from '../../services/reviewService';
+
+// Read-only map component for displaying location
+const ReadOnlyMap: React.FC<{ lat: number; lng: number }> = ({ lat, lng }) => {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!mapRef.current || !(window as any).google) return;
+
+    const googleMaps = (window as any).google.maps;
+
+    // Dark map styles
+    const mapStyles = [
+      { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+      { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+      { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+      { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+      { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
+    ];
+
+    const map = new googleMaps.Map(mapRef.current, {
+      center: { lat, lng },
+      zoom: 15,
+      styles: mapStyles,
+      mapTypeControl: false,
+      streetViewControl: false,
+      zoomControl: true,
+      fullscreenControl: false,
+    });
+
+    const marker = new googleMaps.Marker({
+      position: { lat, lng },
+      map: map,
+      animation: googleMaps.Animation.DROP,
+    });
+
+    mapInstanceRef.current = map;
+    markerRef.current = marker;
+
+    return () => {
+      if (markerRef.current) {
+        markerRef.current.setMap(null);
+      }
+    };
+  }, [lat, lng]);
+
+  return <div ref={mapRef} className="w-full h-full rounded-xl" />;
+};
 
 interface ImageDetailModalProps {
   isOpen: boolean;
@@ -31,6 +80,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({
   onRunAnalysis
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [viewMode, setViewMode] = useState<'image' | 'map'>('image');
   const currentIndex = image ? images.findIndex(img => img.id === image.id) : -1;
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < images.length - 1;
@@ -46,6 +96,11 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({
       onNavigate(images[currentIndex + 1].id);
     }
   }, [hasNext, images, currentIndex, onNavigate]);
+
+  // Reset view mode when image changes
+  useEffect(() => {
+    setViewMode('image');
+  }, [image?.id]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -105,30 +160,71 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({
         {/* Content */}
         <div className="flex-1 overflow-auto p-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Image */}
+            {/* Image/Map Section */}
             <div className="relative">
-              <img 
-                src={image.previewUrl} 
-                alt={image.name}
-                className="w-full rounded-xl bg-background"
-              />
-              
-              {/* Navigation Arrows */}
-              {hasPrev && (
+              {/* Toggle Switch */}
+              <div className="absolute top-3 left-3 z-10 flex bg-slate-900/80 backdrop-blur rounded-lg p-1 border border-slate-600">
                 <button
-                  onClick={handlePrev}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/50 backdrop-blur text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                  onClick={() => setViewMode('image')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                    viewMode === 'image'
+                      ? 'bg-primary text-slate-900'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
                 >
-                  <span className="material-symbols-outlined">chevron_left</span>
+                  <span className="material-symbols-outlined text-sm">image</span>
+                  Immagine
                 </button>
+                <button
+                  onClick={() => setViewMode('map')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                    viewMode === 'map'
+                      ? 'bg-primary text-slate-900'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm">location_on</span>
+                  Mappa
+                </button>
+              </div>
+
+              {/* Image View */}
+              {viewMode === 'image' && (
+                <>
+                  <img 
+                    src={image.previewUrl} 
+                    alt={image.name}
+                    className="w-full rounded-xl bg-background"
+                  />
+                  
+                  {/* Navigation Arrows */}
+                  {hasPrev && (
+                    <button
+                      onClick={handlePrev}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/50 backdrop-blur text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                    >
+                      <span className="material-symbols-outlined">chevron_left</span>
+                    </button>
+                  )}
+                  {hasNext && (
+                    <button
+                      onClick={handleNext}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/50 backdrop-blur text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                    >
+                      <span className="material-symbols-outlined">chevron_right</span>
+                    </button>
+                  )}
+                </>
               )}
-              {hasNext && (
-                <button
-                  onClick={handleNext}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/50 backdrop-blur text-white flex items-center justify-center hover:bg-black/70 transition-colors"
-                >
-                  <span className="material-symbols-outlined">chevron_right</span>
-                </button>
+
+              {/* Map View */}
+              {viewMode === 'map' && (
+                <div className="aspect-square bg-background rounded-xl overflow-hidden">
+                  <ReadOnlyMap 
+                    lat={image.metadata.coordinates.lat} 
+                    lng={image.metadata.coordinates.lng} 
+                  />
+                </div>
               )}
             </div>
             
