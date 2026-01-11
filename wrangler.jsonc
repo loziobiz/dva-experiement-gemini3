@@ -4,7 +4,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "worker/index.ts",
   "vars": {
-    "GEMINI_API_KEY": "AIzaSyCl31TQqHaWgbnLlT7-nbXOK5_NYcXRzCc"
+    "GEMINI_API_KEY": "AIzaSyAHOGJjuv0niGoTf2M4naijHjE5yB55QMw"
   },
   "assets": {
     "directory": "./dist/client",

@@ -196,9 +196,9 @@ const ArchaeologistDashboard: React.FC = () => {
           })()}
         </>
       ) : (
-        /* Map View */
+        /* Map View - exclude discarded submissions */
         <SubmissionsMapView
-          submissions={submissions}
+          submissions={submissions.filter(s => s.status !== 'discarded')}
           onSubmissionClick={handleSubmissionClick}
         />
       )}

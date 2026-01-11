@@ -16,17 +16,20 @@ declare global {
 // --- Sub-components defined internally for simplicity of the single XML block structure ---
 
 interface HeaderProps {
-  currentUserView: 'pilot' | 'archaeologist';
-  onViewChange: (view: 'pilot' | 'archaeologist') => void;
+  currentUserView: 'home' | 'pilot' | 'archaeologist';
+  onViewChange: (view: 'home' | 'pilot' | 'archaeologist') => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ currentUserView, onViewChange }) => (
   <header className="border-b border-secondary bg-background/80 backdrop-blur-md sticky top-0 z-50">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <div className="flex items-center gap-3">
+      <button 
+        onClick={() => onViewChange('home')} 
+        className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+      >
         <img src="/logo/1000084000.webp" alt="DVA Logo" className="w-10 h-10 rounded-full object-cover" />
         <h1 className="text-xl font-bold tracking-tight text-white">DVA <span className="text-slate-400 font-normal text-sm ml-1 hidden sm:inline">| Drone Vision Archeology</span></h1>
-      </div>
+      </button>
       <div className="flex items-center gap-4">
         {/* View Toggle */}
         <div className="flex items-center gap-1 bg-surface border border-secondary rounded-lg p-1">
@@ -255,7 +258,7 @@ const MapComponent: React.FC<MapProps> = ({ coordinates, onCoordinatesChange, se
 // --- MAIN APP COMPONENT ---
 
 const App: React.FC = () => {
-  const [currentUserView, setCurrentUserView] = useState<'pilot' | 'archaeologist'>('pilot');
+  const [currentUserView, setCurrentUserView] = useState<'home' | 'pilot' | 'archaeologist'>('home');
   const [view, setView] = useState<'upload' | 'editor' | 'success'>('upload');
   const [images, setImages] = useState<DroneImage[]>([]);
   const [selectedImageIds, setSelectedImageIds] = useState<string[]>([]);
@@ -453,6 +456,67 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-background text-slate-200 font-sans selection:bg-primary selection:text-white">
       <Header currentUserView={currentUserView} onViewChange={setCurrentUserView} />
+
+      {/* Home View - Role Selection */}
+      {currentUserView === 'home' && (
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 min-h-[calc(100vh-64px)] flex flex-col items-center justify-center">
+          <div className="text-center mb-12 animate-fade-in">
+            <img 
+              src="/logo/1000084000.webp" 
+              alt="DVA Logo" 
+              className="w-28 h-28 md:w-32 md:h-32 rounded-full object-cover mx-auto mb-8 shadow-[0_0_40px_rgba(16,185,129,0.3)] border-2 border-primary/30" 
+            />
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">Benvenuto su DVA</h2>
+            <p className="text-slate-400 text-lg max-w-xl mx-auto">
+              Scegli il tuo ruolo per accedere alla piattaforma di analisi archeologica con droni.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full animate-fade-in" style={{ animationDelay: '150ms' }}>
+            {/* Pilot Card */}
+            <button
+              onClick={() => setCurrentUserView('pilot')}
+              className="group relative bg-surface border border-secondary rounded-2xl p-8 text-left hover:border-primary transition-all duration-300 hover:shadow-[0_0_40px_rgba(16,185,129,0.15)] overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10">
+                <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-4xl text-primary">flight</span>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Pilota</h3>
+                <p className="text-slate-400 leading-relaxed">
+                  Carica le tue immagini aeree, gestisci i metadati GPS e contribuisci alla ricerca archeologica.
+                </p>
+                <div className="mt-6 flex items-center gap-2 text-primary font-semibold">
+                  <span>Inizia a caricare</span>
+                  <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </div>
+              </div>
+            </button>
+
+            {/* Archaeologist Card */}
+            <button
+              onClick={() => setCurrentUserView('archaeologist')}
+              className="group relative bg-surface border border-secondary rounded-2xl p-8 text-left hover:border-accent transition-all duration-300 hover:shadow-[0_0_40px_rgba(99,102,241,0.15)] overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10">
+                <div className="w-16 h-16 bg-accent/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-4xl text-accent">search</span>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Archeologo</h3>
+                <p className="text-slate-400 leading-relaxed">
+                  Revisiona le segnalazioni, analizza i dati e gestisci i progetti di ricerca archeologica.
+                </p>
+                <div className="mt-6 flex items-center gap-2 text-accent font-semibold">
+                  <span>Vai alla dashboard</span>
+                  <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </div>
+              </div>
+            </button>
+          </div>
+        </main>
+      )}
 
       {/* Archaeologist View */}
       {currentUserView === 'archaeologist' && (
