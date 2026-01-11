@@ -218,3 +218,28 @@ export function deleteSubmission(id: string): boolean {
   saveSubmissions(filtered);
   return true;
 }
+
+/**
+ * Update AI analysis for a specific image in a submission
+ */
+export function updateImageAIAnalysis(
+  submissionId: string, 
+  imageId: string, 
+  aiAnalysis: DroneImage['aiAnalysis']
+): boolean {
+  const submissions = getSubmissions();
+  const submissionIndex = submissions.findIndex(s => s.id === submissionId);
+  
+  if (submissionIndex === -1) return false;
+  
+  const imageIndex = submissions[submissionIndex].images.findIndex(
+    (img: DroneImage) => img.id === imageId
+  );
+  
+  if (imageIndex === -1) return false;
+  
+  submissions[submissionIndex].images[imageIndex].aiAnalysis = aiAnalysis;
+  saveSubmissions(submissions);
+  
+  return true;
+}

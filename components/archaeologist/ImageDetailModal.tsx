@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { 
   DroneImage, 
   ImageReviewStatus, 
@@ -17,6 +17,7 @@ interface ImageDetailModalProps {
   onStatusChange: (imageId: string, status: ImageReviewStatus) => void;
   onDiscard: (imageId: string) => void;
   onNavigate: (imageId: string) => void;
+  onRunAnalysis?: (imageId: string) => Promise<void>;
 }
 
 const ImageDetailModal: React.FC<ImageDetailModalProps> = ({
@@ -26,8 +27,10 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({
   onClose,
   onStatusChange,
   onDiscard,
-  onNavigate
+  onNavigate,
+  onRunAnalysis
 }) => {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const currentIndex = image ? images.findIndex(img => img.id === image.id) : -1;
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < images.length - 1;
@@ -156,10 +159,10 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* AI Analysis */}
-              {image.aiAnalysis?.isAnalyzed && (
-                <div>
-                  <h4 className="text-sm font-bold text-slate-400 uppercase mb-3">Analisi AI</h4>
+              {/* AI Analysis - Always visible */}
+              <div>
+                <h4 className="text-sm font-bold text-slate-400 uppercase mb-3">Analisi AI</h4>
+                {image.aiAnalysis?.isAnalyzed ? (
                   <div className="bg-background rounded-xl p-4 space-y-4">
                     {/* Confidence */}
                     <div className="flex items-center justify-between">
@@ -197,8 +200,38 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({
                       ))}
                     </div>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="bg-background rounded-xl p-4">
+                    {isAnalyzing ? (
+                      <div className="flex items-center justify-center gap-3 py-4">
+                        <span className="material-symbols-outlined animate-spin text-primary">progress_activity</span>
+                        <span className="text-slate-300">Analisi in corso...</span>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <span className="material-symbols-outlined text-4xl text-slate-500 mb-2">smart_toy</span>
+                        <p className="text-slate-400 text-sm mb-4">Nessuna analisi AI disponibile</p>
+                        {onRunAnalysis && (
+                          <button
+                            onClick={async () => {
+                              setIsAnalyzing(true);
+                              try {
+                                await onRunAnalysis(image.id);
+                              } finally {
+                                setIsAnalyzing(false);
+                              }
+                            }}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-slate-900 font-medium rounded-lg hover:bg-emerald-400 transition-colors"
+                          >
+                            <span className="material-symbols-outlined">auto_awesome</span>
+                            Esegui Analisi AI
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Discard info if discarded */}
               {status === 'discarded' && image.reviewData?.discardReason && (

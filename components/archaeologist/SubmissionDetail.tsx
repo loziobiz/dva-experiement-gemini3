@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Submission, DroneImage, ImageReviewStatus, DiscardReason } from '../../types';
-import { getSubmissionStats, getSubmissionById } from '../../services/submissionService';
+import { getSubmissionStats, getSubmissionById, updateImageAIAnalysis } from '../../services/submissionService';
 import { updateImageStatus, bulkUpdateStatus } from '../../services/reviewService';
+import { analyzeImage } from '../../services/geminiService';
 import ImageCard from './ImageCard';
 import BulkActionsToolbar from './BulkActionsToolbar';
 import ImageDetailModal from './ImageDetailModal';
@@ -135,6 +136,73 @@ const SubmissionDetail: React.FC<SubmissionDetailProps> = ({ submission, onBack,
     }
   };
 
+  // Run AI analysis on an image
+  const handleRunAnalysis = async (imageId: string): Promise<void> => {
+    const image = localSubmission.images.find(img => img.id === imageId);
+    if (!image || !image.previewUrl) {
+      console.error('No image or previewUrl found');
+      return;
+    }
+
+    try {
+      let base64: string;
+      let mimeType: string = 'image/jpeg';
+      
+      if (image.previewUrl.startsWith('data:')) {
+        // Parse data URL: data:image/png;base64,XXXXXX
+        const commaIndex = image.previewUrl.indexOf(',');
+        if (commaIndex === -1) {
+          console.error('Invalid data URL format - no comma found');
+          return;
+        }
+        
+        // Extract mime type from the header part (e.g., "data:image/png;base64")
+        const header = image.previewUrl.substring(0, commaIndex);
+        const mimeMatch = header.match(/data:([^;]+)/);
+        if (mimeMatch) {
+          mimeType = mimeMatch[1];
+        }
+        
+        // Extract base64 data after the comma
+        base64 = image.previewUrl.substring(commaIndex + 1);
+        
+        console.log('Extracted from data URL:', { mimeType, base64Length: base64.length });
+      } else {
+        // Fetch blob URL and convert to base64
+        console.log('Fetching blob URL:', image.previewUrl);
+        const response = await fetch(image.previewUrl);
+        const blob = await response.blob();
+        mimeType = blob.type || 'image/jpeg';
+        
+        const reader = new FileReader();
+        base64 = await new Promise((resolve, reject) => {
+          reader.onload = () => {
+            const result = reader.result as string;
+            const commaIndex = result.indexOf(',');
+            resolve(result.substring(commaIndex + 1));
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        
+        console.log('Extracted from blob:', { mimeType, base64Length: base64.length });
+      }
+
+      // Run AI analysis
+      console.log('Calling analyzeImage with mimeType:', mimeType);
+      const aiResult = await analyzeImage(base64, mimeType);
+      console.log('AI Result:', aiResult);
+      
+      // Save the result to the submission
+      updateImageAIAnalysis(localSubmission.id, imageId, aiResult);
+      
+      // Refresh local state
+      refreshSubmission();
+    } catch (error) {
+      console.error('Failed to run AI analysis:', error);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -231,6 +299,7 @@ const SubmissionDetail: React.FC<SubmissionDetailProps> = ({ submission, onBack,
         onStatusChange={handleStatusChange}
         onDiscard={handleDiscardSingle}
         onNavigate={handleNavigateImage}
+        onRunAnalysis={handleRunAnalysis}
       />
 
       {/* Discard Modal */}
