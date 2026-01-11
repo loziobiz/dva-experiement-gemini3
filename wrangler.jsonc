@@ -3,6 +3,9 @@
   "compatibility_date": "2025-11-16",
   "compatibility_flags": ["nodejs_compat"],
   "main": "worker/index.ts",
+  "vars": {
+    "GEMINI_API_KEY": "AIzaSyCl31TQqHaWgbnLlT7-nbXOK5_NYcXRzCc"
+  },
   "assets": {
     "directory": "./dist/client",
     "not_found_handling": "single-page-application"
