@@ -15,6 +15,8 @@ const ImageCard: React.FC<ImageCardProps> = ({ image, isSelected, onClick, onVie
   const icon = getStatusIcon(status);
   
   const isDiscarded = status === 'discarded';
+  // Pending and in_analysis images can be selected via checkbox
+  const isSelectable = status === 'pending_review' || status === 'in_analysis';
 
   // Safe access to metadata with fallbacks
   const imageDate = image.metadata?.date || 'N/A';
@@ -90,22 +92,24 @@ const ImageCard: React.FC<ImageCardProps> = ({ image, isSelected, onClick, onVie
         </div>
       )}
 
-      {/* Selection Checkbox */}
-      <div 
-        data-checkbox
-        onClick={handleCheckboxClick}
-        className={`
-          absolute top-2 right-2 w-8 h-8 rounded-md border-2 flex items-center justify-center
-          transition-all cursor-pointer z-10 hover:scale-110
-          ${isSelected 
-            ? 'bg-primary border-primary text-slate-900' 
-            : 'bg-slate-900/70 border-slate-500 hover:border-primary hover:bg-slate-800'}
-        `}
-      >
-        {isSelected && (
-          <span className="material-symbols-outlined text-sm font-bold">check</span>
-        )}
-      </div>
+      {/* Selection Checkbox - only for pending images */}
+      {isSelectable && (
+        <div 
+          data-checkbox
+          onClick={handleCheckboxClick}
+          className={`
+            absolute top-2 right-2 w-8 h-8 rounded-md border-2 flex items-center justify-center
+            transition-all cursor-pointer z-10 hover:scale-110
+            ${isSelected 
+              ? 'bg-primary border-primary text-slate-900' 
+              : 'bg-slate-900/70 border-slate-500 hover:border-primary hover:bg-slate-800'}
+          `}
+        >
+          {isSelected && (
+            <span className="material-symbols-outlined text-sm font-bold">check</span>
+          )}
+        </div>
+      )}
 
       {/* Gradient Overlay */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3 pt-10">
