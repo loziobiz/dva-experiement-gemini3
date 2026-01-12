@@ -264,6 +264,7 @@ const App: React.FC = () => {
   const [selectedImageIds, setSelectedImageIds] = useState<string[]>([]);
   const [searchAddress, setSearchAddress] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const autoCompleteRef = useRef<HTMLInputElement>(null);
 
   // Load from local storage on mount
@@ -311,32 +312,43 @@ const App: React.FC = () => {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      // Explicitly type files as File[] to resolve inference errors
-      const files: File[] = Array.from(e.target.files);
-      
-      // Process files concurrently to extract metadata
-      const newImagesPromises = files.map(async (file) => {
-        const metadata = await extractExifMetadata(file);
-        return {
-          id: crypto.randomUUID(),
-          file,
-          previewUrl: URL.createObjectURL(file),
-          name: file.name,
-          metadata,
-        } as DroneImage;
-      });
+      setIsUploading(true);
 
-      const newImages = await Promise.all(newImagesPromises);
+      try {
+        // Explicitly type files as File[] to resolve inference errors
+        const files: File[] = Array.from(e.target.files);
 
-      setImages(prev => [...prev, ...newImages]);
-      
-      // If we are in upload view, switch to editor immediately after upload
-      if (view === 'upload') {
-        setView('editor');
-        // Auto select the first one
-        if (newImages.length > 0) {
-            setSelectedImageIds([newImages[0].id]);
+        // Process files concurrently to extract metadata
+        const newImagesPromises = files.map(async (file) => {
+          const metadata = await extractExifMetadata(file);
+          return {
+            id: crypto.randomUUID(),
+            file,
+            previewUrl: URL.createObjectURL(file),
+            name: file.name,
+            metadata,
+          } as DroneImage;
+        });
+
+        const newImages = await Promise.all(newImagesPromises);
+
+        setImages(prev => [...prev, ...newImages]);
+
+        // If we are in upload view, switch to editor immediately after upload
+        if (view === 'upload') {
+          setView('editor');
+          // Auto select the first one
+          if (newImages.length > 0) {
+              setSelectedImageIds([newImages[0].id]);
+          }
         }
+      } catch (error) {
+        console.error('Error uploading images:', error);
+        alert('Errore durante il caricamento delle immagini. Riprova.');
+      } finally {
+        setIsUploading(false);
+        // Reset the input value to allow re-uploading the same file
+        e.target.value = '';
       }
     }
   };
@@ -530,23 +542,34 @@ const App: React.FC = () => {
         {view === 'upload' && (
           <div className="flex flex-col items-center justify-center animate-fade-in gap-10 py-8 min-h-[calc(100vh-128px)]">
             <div className="w-full max-w-2xl bg-surface border-2 border-dashed border-secondary rounded-2xl p-12 text-center hover:border-primary transition-colors duration-300 relative group shrink-0">
-              <input 
-                type="file" 
-                multiple 
-                accept="image/*" 
-                onChange={handleFileUpload} 
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileUpload}
+                disabled={isUploading}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
               />
+              {isUploading && (
+                <div className="absolute inset-0 bg-background/95 rounded-2xl flex flex-col items-center justify-center gap-4 z-20">
+                  <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-white font-bold">Caricamento immagini in corso...</p>
+                  <p className="text-slate-400 text-sm">Estrazione metadati EXIF</p>
+                </div>
+              )}
               <div className="flex flex-col items-center gap-4">
                 <div className="w-20 h-20 bg-slate-700/50 rounded-full flex items-center justify-center group-hover:bg-primary/20 group-hover:text-primary transition-all">
                   <span className="material-symbols-outlined text-5xl">cloud_upload</span>
                 </div>
                 <h2 className="text-3xl font-bold text-white">Carica le tue immagini</h2>
                 <p className="text-slate-400 max-w-md">
-                  Trascina qui le foto scattate dal tuo drone o clicca per selezionarle. 
+                  Trascina qui le foto scattate dal tuo drone o clicca per selezionarle.
                   Accettiamo JPG, PNG e TIFF.
                 </p>
-                <button className="mt-6 px-6 py-3 bg-primary text-slate-900 font-bold rounded-lg hover:bg-emerald-400 transition-colors">
+                <button
+                  disabled={isUploading}
+                  className="mt-6 px-6 py-3 bg-primary text-slate-900 font-bold rounded-lg hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   Seleziona File
                 </button>
               </div>
@@ -613,7 +636,18 @@ const App: React.FC = () => {
 
         {view === 'editor' && (
           <div className="flex flex-col gap-6">
-            
+
+            {/* Reset Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={handleReset}
+                className="px-4 py-2 bg-red-600/20 text-red-400 border border-red-600/50 rounded-lg hover:bg-red-600/30 hover:border-red-600 transition-all flex items-center gap-2 text-sm font-bold"
+              >
+                <span className="material-symbols-outlined text-lg">delete</span>
+                Cancella tutto e ricomincia
+              </button>
+            </div>
+
             {/* Top: Image Grid */}
             <div className="h-48 shrink-0 bg-surface border border-secondary rounded-xl p-4 overflow-x-auto overflow-y-hidden">
                <div className="flex gap-4 h-full">

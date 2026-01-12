@@ -30,23 +30,34 @@ const parseExifDate = (dateTimeStr: string): string => {
 
 export const extractExifMetadata = (file: File): Promise<DroneImage['metadata']> => {
   return new Promise((resolve) => {
+    const defaultMetadata = {
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+        coordinates: { lat: 0, lng: 0 },
+        altitude: 0,
+        droneModel: 'Sconosciuto'
+    };
+
+    // Add timeout to prevent hanging on missing/corrupt EXIF data
+    const timeoutId = setTimeout(() => {
+        console.warn(`EXIF extraction timeout for ${file.name} - using default values`);
+        resolve(defaultMetadata);
+    }, 3000); // 3 second timeout
+
     try {
         if (typeof EXIF === 'undefined') {
             console.warn('EXIF library not loaded');
-            resolve({
-                date: new Date().toISOString().split('T')[0],
-                time: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
-                coordinates: { lat: 0, lng: 0 },
-                altitude: 0,
-                droneModel: 'Sconosciuto'
-            });
+            clearTimeout(timeoutId);
+            resolve(defaultMetadata);
             return;
         }
 
         // We use 'any' for the library context as types might not be perfectly inferred
         EXIF.getData(file as any, function (this: any) {
+        clearTimeout(timeoutId); // Clear timeout since we got a response
+
         const allTags = EXIF.getAllTags(this);
-        
+
         // Default Values
         let lat = 0;
         let lng = 0;
@@ -99,14 +110,9 @@ export const extractExifMetadata = (file: File): Promise<DroneImage['metadata']>
         });
         });
     } catch (e) {
+        clearTimeout(timeoutId);
         console.error("Error reading EXIF data", e);
-        resolve({
-            date: new Date().toISOString().split('T')[0],
-            time: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
-            coordinates: { lat: 0, lng: 0 },
-            altitude: 0,
-            droneModel: 'Sconosciuto'
-        });
+        resolve(defaultMetadata);
     }
   });
 };
