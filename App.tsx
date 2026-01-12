@@ -439,6 +439,32 @@ const App: React.FC = () => {
     localStorage.removeItem('dva_images');
   };
 
+  const handleDeleteImage = (id: string) => {
+    // Remove the image from the list
+    setImages(prev => {
+      const newImages = prev.filter(img => img.id !== id);
+      // If no images left, go back to upload view
+      if (newImages.length === 0) {
+        setView('upload');
+        localStorage.removeItem('dva_images');
+      }
+      return newImages;
+    });
+
+    // Remove from selection if it was selected
+    setSelectedImageIds(prev => {
+      const newSelection = prev.filter(imgId => imgId !== id);
+      // If the deleted image was selected and there are still images, select the first one
+      if (prev.includes(id) && newSelection.length === 0) {
+        const remainingImages = images.filter(img => img.id !== id);
+        if (remainingImages.length > 0) {
+          return [remainingImages[0].id];
+        }
+      }
+      return newSelection;
+    });
+  };
+
   // Validation Logic
   const areAllImagesValid = images.length > 0 && images.every(img => 
     img.metadata.coordinates.lat !== 0 && 
@@ -659,7 +685,7 @@ const App: React.FC = () => {
                   </div>
 
                   {images.map(img => (
-                    <div 
+                    <div
                       key={img.id}
                       onClick={(e) => toggleSelection(img.id, e.metaKey || e.ctrlKey)}
                       className={`
@@ -688,6 +714,17 @@ const App: React.FC = () => {
                            <span className="material-symbols-outlined text-sm font-bold">check</span>
                         </div>
                       )}
+                      {/* Delete button - visible on hover */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteImage(img.id);
+                        }}
+                        className="absolute top-2 left-2 w-8 h-8 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                        title="Scarta immagine"
+                      >
+                        <span className="material-symbols-outlined text-lg">delete</span>
+                      </button>
                     </div>
                   ))}
                </div>
